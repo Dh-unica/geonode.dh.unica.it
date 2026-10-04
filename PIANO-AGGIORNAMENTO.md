@@ -87,7 +87,7 @@ geonode.dh.unica.it/                  ← repo git → github.com/dh-unica/geono
 ```
 
 - `main` = ciò che gira in produzione. Primo commit = copia esatta di oggi → tag **`prod-4.4.1`**.
-- Branch `upgrade/4.4.5` → PR → merge dopo il go-live → tag **`prod-4.4.5`**.
+- Branch `feat/upgrade-geonode-4.4.5` → PR → merge dopo il go-live → tag **`prod-4.4.5`**.
 - `.gitignore`: `.env*` (tranne `.env.sample`), `backups/`, `*.dump`, `*.tar*`.
 - Prima del primo push si controlla con `git grep` che non ci siano password, `SECRET_KEY` o token nel repo.
 
