@@ -1,0 +1,23 @@
+# Upgrade minimo 4.4.1 -> 4.4.5 (PIANO fase A): si parte dall'immagine in produzione
+# (uni_cagliari/geonode:4.4.1, ID de3ab4bb718e) e si aggiornano solo i pacchetti Python.
+# Sistema operativo, GDAL e uwsgi restano identici; il tag geonode-base:latest-ubuntu-22.04 è mobile.
+FROM uni_cagliari/geonode:4.4.1
+
+COPY src /usr/src/uni_cagliari/
+WORKDIR /usr/src/uni_cagliari
+
+COPY src/wait-for-databases.sh /usr/bin/wait-for-databases
+COPY src/celery.sh /usr/bin/celery-commands
+COPY src/celery-cmd /usr/bin/celery-cmd
+RUN chmod +x /usr/bin/wait-for-databases /usr/bin/celery-commands /usr/bin/celery-cmd \
+    /usr/src/uni_cagliari/tasks.py /usr/src/uni_cagliari/entrypoint.sh
+
+RUN yes w | pip install --src /usr/src -r requirements.txt && \
+    yes w | pip install -e .
+# Correzioni locali al codice di GeoNode (app/patches/README.md). La build FALLISCE se una patch non si
+# applica più: al prossimo aggiornamento va rivista, non persa.
+COPY patches /usr/src/uni_cagliari/patches
+RUN python3 /usr/src/uni_cagliari/patches/apply_patches.py
+
+# solo informativo: elenca eventuali conflitti senza far fallire la build
+RUN pip check || true

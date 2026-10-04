@@ -5,7 +5,7 @@
 **L'infrastruttura di dati geospaziali del Centro Interdipartimentale per l'Umanistica Digitale dell'Università di Cagliari**
 
 [![Sito](https://img.shields.io/badge/sito-geonode.dh.unica.it-1f4e79)](https://geonode.dh.unica.it/)
-[![GeoNode](https://img.shields.io/badge/GeoNode-4.4.1-4c9a2a)](https://geonode.org/)
+[![GeoNode](https://img.shields.io/badge/GeoNode-4.4.5-4c9a2a)](https://geonode.org/)
 [![GeoServer](https://img.shields.io/badge/GeoServer-2.24.4-2c6db3)](https://geoserver.org/)
 [![PostGIS](https://img.shields.io/badge/PostGIS-PostgreSQL%2015-336791)](https://postgis.net/)
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ed?logo=docker&logoColor=white)](app/docker-compose.yml)
@@ -116,7 +116,7 @@ Il catalogo completo si consulta su [geonode.dh.unica.it](https://geonode.dh.uni
 
 | Componente | Immagine / versione | Ruolo |
 |---|---|---|
-| **GeoNode** (Django + uWSGI) | `uni_cagliari/geonode:4.4.1` | Catalogo, metadati, permessi, interfaccia MapStore, API REST v2 |
+| **GeoNode** (Django + uWSGI) | `uni_cagliari/geonode:4.4.5` | Catalogo, metadati, permessi, interfaccia MapStore, API REST v2 |
 | **Celery** | stessa immagine di GeoNode | Attività asincrone: upload, thumbnail, sincronizzazione con GeoServer |
 | **GeoServer** | `uni_cagliari/geoserver:2.24.4-v1` | Pubblicazione dei dati come servizi OGC, stili, cache delle tessere (GeoWebCache) |
 | **PostgreSQL + PostGIS** | `uni_cagliari/postgis:15.3-latest` | DB `geonode` (catalogo) e `geonode_data` (dati vettoriali) |
@@ -165,6 +165,9 @@ I dati persistenti vivono in volumi Docker con prefisso `uni_cagliari-`: `dbdata
 geonode.dh.unica.it/
 ├── README.md                 ← questo file
 ├── PIANO-AGGIORNAMENTO.md    ← piano di aggiornamento 4.4.1 → 4.4.5 → 5.x, con garanzie su dati e rollback
+├── RUNBOOK-PRODUZIONE.md     ← procedura, tempi ed esito dell'aggiornamento a 4.4.5
+├── scripts/                  ← inventario, backup, copia locale, smoke test, rollback
+├── overrides/                ← override docker compose per la copia locale isolata
 ├── app/                      ← progetto GeoNode "uni_cagliari", copia esatta della produzione
 │   ├── docker-compose.yml    ← definizione dei servizi
 │   ├── Dockerfile            ← immagine GeoNode del progetto
@@ -174,7 +177,12 @@ geonode.dh.unica.it/
 └── docs/img/                 ← immagini di questo README
 ```
 
-Gli script operativi (inventario, backup, restore locale, rollback) e l'override per la copia locale arrivano con il branch dell'aggiornamento, `feat/upgrade-geonode-4.4.5`.
+Completano il repository:
+
+- `RUNBOOK-PRODUZIONE.md`: procedura eseguita per l'aggiornamento, con i tempi misurati e l'esito;
+- `scripts/`: inventario, backup a caldo e a freddo, restore e uso della copia locale isolata, confronto degli inventari, smoke test, rollback;
+- `overrides/docker-compose.local.yml`: override per la copia locale, che non può raggiungere la produzione;
+- `app/Dockerfile.4.4.5` e `app/patches/`: immagine 4.4.5 costruita sopra la 4.4.1 di produzione, con le correzioni locali a GeoNode.
 
 ---
 
@@ -185,7 +193,7 @@ La configurazione sta in `app/.env`, che **non è versionato**. [`app/.env.sampl
 | Variabile | Valore in produzione | Nota |
 |---|---|---|
 | `COMPOSE_PROJECT_NAME` | `uni_cagliari` | prefisso di container (`django4uni_cagliari`, …) e volumi |
-| `GEONODE_BASE_IMAGE_VERSION` | `4.4.1` | tag dell'immagine GeoNode in uso |
+| `GEONODE_BASE_IMAGE_VERSION` | `4.4.5` | tag dell'immagine GeoNode in uso |
 | `SITEURL` | `https://geonode.dh.unica.it/` | URL pubblico |
 | `GEOSERVER_LOCATION` | `http://geoserver:8080/geoserver/` | GeoServer visto dalla rete interna |
 | `LETSENCRYPT_MODE` | `production` | certificati reali |
@@ -212,7 +220,7 @@ docker exec -it django4uni_cagliari python manage.py <comando>
 
 Gli aggiornamenti seguono [PIANO-AGGIORNAMENTO.md](PIANO-AGGIORNAMENTO.md):
 
-1. **Fase A**: 4.4.1 → 4.4.5. Risolve l'errore 502 nel salvataggio degli stili CSS ([GeoNode #12716](https://github.com/GeoNode/geonode/issues/12716)) cambiando il minimo indispensabile.
+1. **Fase A** (completata il 4 ottobre 2026): 4.4.1 → 4.4.5. Ha risolto l'errore 502 nel salvataggio degli stili CSS ([GeoNode #12716](https://github.com/GeoNode/geonode/issues/12716)) cambiando il minimo indispensabile. Esito in [RUNBOOK-PRODUZIONE.md](RUNBOOK-PRODUZIONE.md).
 2. **Fase B**: 4.4.5 → 5.0 → 5.1, da pianificare.
 
 Ogni passo si prova prima su una copia locale isolata della produzione, con backup verificati e rollback provato.
@@ -225,7 +233,7 @@ Ogni passo si prova prima su una copia locale isolata della produzione, con back
 - Un branch per attività, creato da `main` aggiornato, con prefisso convenzionale: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`.
 - Messaggi di commit **in italiano** con tipo convenzionale, per esempio `docs: aggiunge il README del progetto`.
 - Ogni branch si chiude con una Pull Request; dopo il merge il branch si cancella.
-- I rilasci in produzione hanno un tag: `prod-4.4.1` è lo stato di partenza.
+- I rilasci in produzione hanno un tag: `prod-4.4.1` è lo stato di partenza, `prod-4.4.5` quello attuale.
 - Prima di ogni push, controllare che non entrino segreti (`.env`, password, chiavi). Il [`.gitignore`](.gitignore) esclude già `.env*`, dump e backup.
 
 ---

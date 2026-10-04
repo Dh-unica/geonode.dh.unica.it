@@ -13,3 +13,7 @@ backups/
 *.tar.gz
 *.tgz
 *.zip
+
+# python
+__pycache__/
+*.pyc

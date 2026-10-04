@@ -87,7 +87,7 @@ geonode.dh.unica.it/                  ← repo git → github.com/dh-unica/geono
 ```
 
 - `main` = ciò che gira in produzione. Primo commit = copia esatta di oggi → tag **`prod-4.4.1`**.
-- Branch `upgrade/4.4.5` → PR → merge dopo il go-live → tag **`prod-4.4.5`**.
+- Branch `feat/upgrade-geonode-4.4.5` → PR → merge dopo il go-live → tag **`prod-4.4.5`**.
 - `.gitignore`: `.env*` (tranne `.env.sample`), `backups/`, `*.dump`, `*.tar*`.
 - Prima del primo push si controlla con `git grep` che non ci siano password, `SECRET_KEY` o token nel repo.
 
@@ -178,7 +178,7 @@ Downtime stimato: 45–90 min (verrà misurato in A6).
 
 ### 5.4 La copia locale è fedele e isolata
 
-- **Fedeltà**: stesso hostname (`geonode.dh.unica.it` → `127.0.0.1` via `/etc/hosts`), stesse immagini, stessi volumi ripristinati. Prova: il bug del 502 sugli stili CSS si riproduce. Se non si riproduce, la copia non è fedele e ci si ferma.
+- **Fedeltà**: stesso hostname, stesse immagini, stessi volumi ripristinati. `/etc/hosts` dell'host **non si tocca**: i test manuali si fanno da una finestra Chrome dedicata (`scripts/local-browser.sh`: profilo temporaneo e `--host-resolver-rules` solo per quella istanza), i test automatici con `curl --resolve` / Playwright con la stessa regola. Il resto del sistema continua a vedere la produzione. Prova: il bug del 502 sugli stili CSS si riproduce. Se non si riproduce, la copia non è fedele e ci si ferma.
 - **Isolamento dalla produzione** (critico: con lo stesso hostname i container locali potrebbero risolvere `geonode.dh.unica.it` verso il **server vero** e scriverci sopra):
   - `extra_hosts: geonode.dh.unica.it:host-gateway` su django, celery e geoserver nel `docker-compose.local.yml`;
   - controllo prima di ogni avvio: `getent hosts geonode.dh.unica.it` dentro ogni container deve dare un IP **locale**;
@@ -217,7 +217,7 @@ Poi gli smoke test (§7). Si riapre solo se tutto è OK.
    CREATE DATABASE geonode OWNER geonode;
    ```
 
-   poi `pg_restore -d geonode geonode.dump` (dump a freddo) e verifica dei conteggi con §5.5. Lo stesso si fa per `geonode_data` **solo se** il suo inventario è cambiato (non è previsto). Il DB "fallito" resta disponibile per l'analisi e si cancella solo a stabilità raggiunta.
+   poi `pg_restore` dal dump a freddo e verifica dei conteggi con §5.5. **Lo stesso vale per `geonode_data`**: la prova ha mostrato che la 4.4.5 registra le sue 3 migrazioni anche lì (`django_migrations` +3), quindi si ripristinano sempre entrambi. I DB "falliti" restano disponibili per l'analisi e si cancellano solo a stabilità raggiunta. Procedura e tempi in [RUNBOOK-PRODUZIONE.md](RUNBOOK-PRODUZIONE.md) (`scripts/rollback.sh`, 2 min 47 s in locale).
 
 3. **Immagine**: in `.env` si rimette `GEONODE_BASE_IMAGE_VERSION=4.4.1`. L'immagine `de3ab4bb718e` è ancora sul server; in caso contrario si fa `docker load` dal file salvato.
 4. **Codice/compose**: si torna alla cartella `/opt/projects/geonode441/uni-cagliari-geonode`, mai modificata.
@@ -254,7 +254,8 @@ In fase A **non esiste un passo irreversibile**: il DB precedente è nel dump (2
 ```sql
 -- solo tabelle di dati; restano le tabelle di configurazione (metric, servicetype, eventtype…)
 TRUNCATE monitoring_metricvalue, monitoring_requestevent_resources,
-         monitoring_requestevent, monitoring_exceptionevent, monitoring_metriclabel;
+         monitoring_requestevent, monitoring_exceptionevent, monitoring_metriclabel,
+         monitoring_metricnotificationcheck;  -- 0 righe, ma referenzia metriclabel (emerso nella prova)
 ```
 
 ```bash
@@ -303,6 +304,7 @@ Manuali:
 | Spazio disco su prod (immagine nuova ~2,5 GB + dump ~4 GB) | Bassa | Medio | 48 GB liberi; `VACUUM FULL` ne recupera ~3,5 |
 | `docker-compose` 1.27.3 non interpreta qualcosa del compose aggiornato | Bassa | Medio | In fase A il compose resta quello attuale |
 | Banda prod→locale lenta per i 31 GB di statics | Media | Basso | Il backup a caldo parte per primo; a freddo si trasferisce solo la differenza |
+| **Avvenuto il 2026-10-04 (~16:15–16:20 UTC):** lo stream degli statics da `docker run` è finito anche nel log json del container e ha riempito il disco di prod (sito in errore per circa 5 minuti, PostgreSQL in crash recovery) | — | Alto | Container rimosso, spazio tornato a 48 GB, inventario identico a quello precedente: **nessun dato perso**. Ora tutti i container usano `--log-driver none`, e un watchdog interrompe il backup sotto i 20 GB liberi |
 
 ---
 
@@ -322,5 +324,6 @@ In sintesi, da dettagliare con la stessa disciplina di §5:
 - GeoServer 2.27 → 2.28 (la data dir **non torna indietro**: backup completo obbligatorio), regole aggiuntive in `rest.properties`;
 - PostGIS 3.5 (`ALTER EXTENSION postgis UPDATE`), `migrate_file_to_assets`, porting delle personalizzazioni;
 - compose v2 da installare sul server.
+- **Patch locali da rivedere**: [app/patches/README.md](app/patches/README.md). Oggi c'è `set-styles-alt-workspace`. La build fallisce apposta se la patch non si applica più: va verificato se GeoNode 5.x ha corretto il difetto (allora la patch si toglie) o se va riportata sul nuovo codice.
 
 Riferimento: [Upgrade from GeoNode 4 to 5](https://github.com/GeoNode/geonode/wiki/Upgrade-from-GeoNode-4-to-5).
