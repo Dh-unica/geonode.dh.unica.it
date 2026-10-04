@@ -1,0 +1,32 @@
+# Override per la copia locale (prova di upgrade). Usare SEMPRE tramite scripts/local.sh.
+#
+# Isolamento dalla produzione (PIANO §5.4): stesso hostname della produzione, ma dentro i container
+# geonode.dh.unica.it risolve verso l'host locale (host-gateway), dove nginx locale ascolta su 127.0.0.1.
+# Nessuna porta esposta oltre 127.0.0.1, letsencrypt disattivato.
+
+x-local-isolation: &local-isolation
+  env_file: !override
+    - .env.local
+  extra_hosts:
+    - "geonode.dh.unica.it:host-gateway"
+
+services:
+  django:
+    <<: *local-isolation
+  celery:
+    <<: *local-isolation
+  geoserver:
+    <<: *local-isolation
+    ports: !reset []
+  geonode:
+    env_file: !override
+      - .env.local
+    ports: !override
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+  db:
+    env_file: !override
+      - .env.local
+  letsencrypt:
+    # non deve chiedere/rinnovare certificati: in locale si usano quelli copiati da prod
+    profiles: ["disabled"]
