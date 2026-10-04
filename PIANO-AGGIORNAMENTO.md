@@ -217,7 +217,7 @@ Poi gli smoke test (§7). Si riapre solo se tutto è OK.
    CREATE DATABASE geonode OWNER geonode;
    ```
 
-   poi `pg_restore -d geonode geonode.dump` (dump a freddo) e verifica dei conteggi con §5.5. Lo stesso si fa per `geonode_data` **solo se** il suo inventario è cambiato (non è previsto). Il DB "fallito" resta disponibile per l'analisi e si cancella solo a stabilità raggiunta.
+   poi `pg_restore` dal dump a freddo e verifica dei conteggi con §5.5. **Lo stesso vale per `geonode_data`**: la prova ha mostrato che la 4.4.5 registra le sue 3 migrazioni anche lì (`django_migrations` +3), quindi si ripristinano sempre entrambi. I DB "falliti" restano disponibili per l'analisi e si cancellano solo a stabilità raggiunta. Procedura e tempi in [RUNBOOK-PRODUZIONE.md](RUNBOOK-PRODUZIONE.md) (`scripts/rollback.sh`, 2 min 47 s in locale).
 
 3. **Immagine**: in `.env` si rimette `GEONODE_BASE_IMAGE_VERSION=4.4.1`. L'immagine `de3ab4bb718e` è ancora sul server; in caso contrario si fa `docker load` dal file salvato.
 4. **Codice/compose**: si torna alla cartella `/opt/projects/geonode441/uni-cagliari-geonode`, mai modificata.
@@ -254,7 +254,8 @@ In fase A **non esiste un passo irreversibile**: il DB precedente è nel dump (2
 ```sql
 -- solo tabelle di dati; restano le tabelle di configurazione (metric, servicetype, eventtype…)
 TRUNCATE monitoring_metricvalue, monitoring_requestevent_resources,
-         monitoring_requestevent, monitoring_exceptionevent, monitoring_metriclabel;
+         monitoring_requestevent, monitoring_exceptionevent, monitoring_metriclabel,
+         monitoring_metricnotificationcheck;  -- 0 righe, ma referenzia metriclabel (emerso nella prova)
 ```
 
 ```bash
