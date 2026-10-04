@@ -166,6 +166,8 @@ geonode.dh.unica.it/
 ├── README.md                 ← questo file
 ├── PIANO-AGGIORNAMENTO.md    ← piano di aggiornamento 4.4.1 → 4.4.5 → 5.x, con garanzie su dati e rollback
 ├── RUNBOOK-PRODUZIONE.md     ← procedura, tempi ed esito dell'aggiornamento a 4.4.5
+├── PROSSIMI-PASSI.md         ← stato attuale e attività da fare, aggiornato a ogni intervento
+├── CLAUDE.md                 ← istruzioni e regole per le sessioni di Claude Code
 ├── scripts/                  ← inventario, backup, copia locale, smoke test, rollback
 ├── overrides/                ← override docker compose per la copia locale isolata
 ├── app/                      ← progetto GeoNode "uni_cagliari", copia esatta della produzione
