@@ -9,6 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 P=uni_cagliari
 PROD_IP=90.147.144.173
+LOCAL_NGINX_IP=172.30.53.10   # IP fisso dell'nginx locale (overrides/docker-compose.local.yml)
 COMPOSE=(docker compose --project-directory "$ROOT/app" --env-file "$ROOT/app/.env.local"
          -f "$ROOT/app/docker-compose.yml" -f "$ROOT/overrides/docker-compose.local.yml")
 
@@ -29,7 +30,7 @@ ko = []
 for s in ("django", "celery", "geoserver"):
     eh = cfg[s].get("extra_hosts") or {}
     eh = eh if isinstance(eh, dict) else dict(re.split("[=:]", x, maxsplit=1) for x in eh)
-    if eh.get("geonode.dh.unica.it") not in ("host-gateway", ["host-gateway"]):
+    if eh.get("geonode.dh.unica.it") not in ("172.30.53.10", ["172.30.53.10"]):
         ko.append(f"{s}: extra_hosts mancante")
 for s, c in cfg.items():
     for p in c.get("ports") or []:
@@ -46,7 +47,7 @@ check_isolation() {
   for c in django4$P celery4$P geoserver4$P; do
     docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null | grep -q true || continue
     ip="$(docker exec "$c" getent hosts geonode.dh.unica.it | awk '{print $1}')"
-    if [[ "$ip" == "$PROD_IP" || ! "$ip" =~ ^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.) ]]; then
+    if [[ "$ip" == "$PROD_IP" || "$ip" != "$LOCAL_NGINX_IP" ]]; then
       echo "KO $c: geonode.dh.unica.it -> '$ip' (non locale)"; ok=0
     else
       echo "OK $c: geonode.dh.unica.it -> $ip"

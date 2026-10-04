@@ -1,14 +1,16 @@
 # Override per la copia locale (prova di upgrade). Usare SEMPRE tramite scripts/local.sh.
 #
 # Isolamento dalla produzione (PIANO §5.4): stesso hostname della produzione, ma dentro i container
-# geonode.dh.unica.it risolve verso l'host locale (host-gateway), dove nginx locale ascolta su 127.0.0.1.
+# geonode.dh.unica.it risolve verso l'nginx LOCALE, che ha un IP fisso nella rete dello stack.
+# Così le chiamate interne a SITEURL (thumbnail, OAuth, ecc.) funzionano come in prod; se nginx è spento
+# la connessione viene rifiutata e non può mai raggiungere la produzione.
 # Nessuna porta esposta oltre 127.0.0.1, letsencrypt disattivato.
 
 x-local-isolation: &local-isolation
   env_file: !override
     - .env.local
   extra_hosts:
-    - "geonode.dh.unica.it:host-gateway"
+    - "geonode.dh.unica.it:172.30.53.10"
 
 services:
   django:
@@ -24,9 +26,18 @@ services:
     ports: !override
       - "127.0.0.1:80:80"
       - "127.0.0.1:443:443"
+    networks:
+      default:
+        ipv4_address: 172.30.53.10
   db:
     env_file: !override
       - .env.local
   letsencrypt:
     # non deve chiedere/rinnovare certificati: in locale si usano quelli copiati da prod
     profiles: ["disabled"]
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.53.0/24
