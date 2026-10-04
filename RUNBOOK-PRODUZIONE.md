@@ -156,3 +156,19 @@ PROD "cd $DIR && CONFIRM=si COMPOSE=docker-compose ENV_FILE=.env DUMPS=/opt/proj
 | 4 | 5 thumbnail con URL malformati nel DB danno 404 | Sì, identiche | Estetico | Elenco di riferimento per lo smoke test |
 | 5 | `pyopenssl 24.1.0` (residuo della 4.4.1) dichiara incompatibile `cryptography 45` | — | Nessuno: importazione e uso verificati, nessun pacchetto lo richiede | Nessuna azione |
 | 6 | Cambiando il `.env` si ricrea anche il container `db` | — | Nessuno (dati nel volume) | Riavvio completo e ordinato in A8 |
+
+## Esito dell'intervento del 2026-10-04
+
+| Ora | Passo | Esito |
+|---|---|---|
+| 19:4x | Preparazione: immagine 4.4.5 (`7edb1d4fbf73`) caricata su prod, inventario pre-freeze | OK. Prima del freeze Alessandro ha cancellato un documento e un utente, inclusi nel backup a freddo |
+| 19:43 | A7 freeze (nginx, django, celery fermi) | Inizio del downtime |
+| 19:43–19:49 | Backup a freddo (copia su prod e in locale, sha256 identici); confronto degli statics | OK, nessun file nuovo rispetto al backup degli statics |
+| 19:49–19:51 | A8 upgrade (`.env` 4.4.1→4.4.5, stop e avvio completi) | OK, 3 migrazioni su entrambi i DB |
+| 19:51–19:57 | A9 inventario e smoke test | OK: solo `django_migrations` +3; PUT CSS 200 (bug risolto) |
+| 19:57–19:59 | A10 pulizia DB e riavvio | DB `geonode` da 3.722 MB a 75 MB; 3.575.028 sessioni scadute rimosse |
+| 19:59 | Riapertura | Downtime totale ~16 minuti |
+| 20:02 | Verifiche finali (inventario e smoke test) | OK |
+| 20:05 | A11 cron `clearsessions` alle 03:30 nel crontab di `dhlake` | Installato e provato |
+
+Backup a freddo: `/opt/projects/geonode441/backup/2026-10-04/` su prod e `backups/2026-10-04/cold/` in locale (non versionato). Vanno conservati almeno fino al 2026-11-04, insieme all'immagine `uni_cagliari/geonode:rollback-4.4.1`.
