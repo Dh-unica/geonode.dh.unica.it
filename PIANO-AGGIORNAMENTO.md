@@ -303,6 +303,7 @@ Manuali:
 | Spazio disco su prod (immagine nuova ~2,5 GB + dump ~4 GB) | Bassa | Medio | 48 GB liberi; `VACUUM FULL` ne recupera ~3,5 |
 | `docker-compose` 1.27.3 non interpreta qualcosa del compose aggiornato | Bassa | Medio | In fase A il compose resta quello attuale |
 | Banda prod→locale lenta per i 31 GB di statics | Media | Basso | Il backup a caldo parte per primo; a freddo si trasferisce solo la differenza |
+| **Avvenuto il 2026-10-04 (~16:15–16:20 UTC):** lo stream degli statics da `docker run` è finito anche nel log json del container e ha riempito il disco di prod (sito in errore per circa 5 minuti, PostgreSQL in crash recovery) | — | Alto | Container rimosso, spazio tornato a 48 GB, inventario identico a quello precedente: **nessun dato perso**. Ora tutti i container usano `--log-driver none`, e un watchdog interrompe il backup sotto i 20 GB liberi |
 
 ---
 

@@ -90,7 +90,7 @@ manifest() { # volume, sottocartelle escluse...
   local vol="$1"; shift
   local prune=()
   for x in "$@"; do prune+=(-path "/v/$x" -prune -o); done
-  docker run --rm --network none --entrypoint find -v "${vol}:/v:ro" "$IMG" \
+  docker run --rm --log-driver none --network none --entrypoint find -v "${vol}:/v:ro" "$IMG" \
     /v "${prune[@]}" -printf '%y\t%s\t%T@\t%P\n' \
     | awk -F'\t' 'BEGIN{OFS="\t"} $4!="" {split($3,t,"."); print $1,$2,t[1],$4}' | LC_ALL=C sort -t $'\t' -k4
 }
@@ -99,7 +99,7 @@ manifest "${P}-gsdatadir" gwc logs temp tmp > "$OUT/31-manifest-gsdatadir.tsv"
 for f in 30-manifest-statics 31-manifest-gsdatadir; do
   awk -F'\t' '$1=="f"{n++; b+=$2} END{printf "files=%d bytes=%d\n", n, b}' "$OUT/$f.tsv" > "$OUT/$f.summary"
 done
-docker run --rm --network none --entrypoint cat -v "${P}-statics:/v:ro" "$IMG" /v/geonode_init.lock > "$OUT/32-geonode_init.lock" 2>&1 || echo "MANCANTE" > "$OUT/32-geonode_init.lock"
-docker run --rm --network none --entrypoint cat -v "${P}-gsdatadir:/v:ro" "$IMG" /v/geoserver_init.lock > "$OUT/33-geoserver_init.lock" 2>&1 || echo "MANCANTE" > "$OUT/33-geoserver_init.lock"
+docker run --rm --log-driver none --network none --entrypoint cat -v "${P}-statics:/v:ro" "$IMG" /v/geonode_init.lock > "$OUT/32-geonode_init.lock" 2>&1 || echo "MANCANTE" > "$OUT/32-geonode_init.lock"
+docker run --rm --log-driver none --network none --entrypoint cat -v "${P}-gsdatadir:/v:ro" "$IMG" /v/geoserver_init.lock > "$OUT/33-geoserver_init.lock" 2>&1 || echo "MANCANTE" > "$OUT/33-geoserver_init.lock"
 
 tar -C "$OUT" -czf - .

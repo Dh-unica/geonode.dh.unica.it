@@ -8,6 +8,10 @@
 # Ogni elemento produce <nome> + <nome>.sha256 (calcolato su prod alla sorgente) e viene verificato in locale.
 # Gli statics (senza static/, rigenerabile) vengono estratti in <dest>/statics/ con proprietari e permessi
 # originali tramite un container locale; la verifica avviene sul manifest (scripts/inventory.sh).
+#
+# ATTENZIONE (incidente 2026-10-04): lo stdout di un "docker run" finisce ANCHE nel log json del container,
+# quindi uno stream di 33 GB riempie il disco di prod. Tutti i container usano --log-driver none e un watchdog
+# interrompe il backup se lo spazio libero su prod scende sotto MIN_FREE_GB.
 set -euo pipefail
 
 DEST="${1:?cartella di destinazione}"; shift
@@ -19,8 +23,30 @@ P="${P:-uni_cagliari}"
 IMG="${IMG:-${P}/geonode:4.4.1}"
 SSH=(ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$HOME/.ssh/id_rsa" -o ServerAliveInterval=30 "$HOST")
 
+MIN_FREE_GB="${MIN_FREE_GB:-20}"
+LABEL=geonode-backup
+
 mkdir -p "$DEST"
 log() { printf '[%s] %s\n' "$(date +%T)" "$*" >&2; }
+
+prod_free_gb() { "${SSH[@]}" "df -BG --output=avail / | tail -1 | tr -dc 0-9"; }
+cleanup_remote() { "${SSH[@]}" "docker ps -aq --filter label=$LABEL | xargs -r docker rm -f >/dev/null" || true; }
+
+# Watchdog: controlla lo spazio su prod ogni 20 s; sotto soglia rimuove i container del backup e termina lo script.
+watchdog() {
+  local main=$1 free
+  while kill -0 "$main" 2>/dev/null; do
+    free="$(prod_free_gb || echo 999)"
+    if (( free < MIN_FREE_GB )); then
+      log "KO spazio libero su prod ${free} GB < ${MIN_FREE_GB} GB: interrompo il backup"
+      cleanup_remote; kill -TERM "$main"; return
+    fi
+    sleep 20
+  done
+}
+(( $(prod_free_gb) >= MIN_FREE_GB )) || { log "KO spazio libero su prod sotto ${MIN_FREE_GB} GB: non parto"; exit 1; }
+watchdog $$ & WATCHDOG=$!
+trap 'kill $WATCHDOG 2>/dev/null; cleanup_remote' EXIT
 
 # Esegue "cmd" su prod, scrive lo stream in $DEST/$name e confronta lo sha256 calcolato su prod con quello locale.
 pull() {
@@ -39,7 +65,7 @@ pull() {
 }
 
 ro_tar() { # volume, opzioni tar extra
-  echo "docker run --rm --network none -v ${P}-$1:/v:ro --entrypoint tar $IMG -C /v --numeric-owner -cf - $2 ."
+  echo "docker run --rm --log-driver none --label $LABEL --network none -v ${P}-$1:/v:ro --entrypoint tar $IMG -C /v --numeric-owner -cf - $2 ."
 }
 
 for item in "${ITEMS[@]}"; do
@@ -60,7 +86,7 @@ for item in "${ITEMS[@]}"; do
       t0=$SECONDS
       mkdir -p "$DEST/statics"
       "${SSH[@]}" "$(ro_tar statics '--exclude=./static')" \
-        | docker run -i --rm --network none -v "$(realpath "$DEST/statics"):/out" --entrypoint tar alpine \
+        | docker run -i --rm --log-driver none --network none -v "$(realpath "$DEST/statics"):/out" --entrypoint tar alpine \
             -C /out --numeric-owner -xpf -
       log "fine statics ($((SECONDS - t0)) s): verificare con il manifest" ;;
     *) log "elemento sconosciuto: $item"; exit 2 ;;
