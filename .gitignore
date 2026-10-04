@@ -1,0 +1,15 @@
+# segreti
+.env
+.env.*
+!.env.sample
+**/.env
+**/.env.*
+!**/.env.sample
+
+# backup e dump
+backups/
+*.dump
+*.tar
+*.tar.gz
+*.tgz
+*.zip
