@@ -14,5 +14,10 @@ RUN chmod +x /usr/bin/wait-for-databases /usr/bin/celery-commands /usr/bin/celer
 
 RUN yes w | pip install --src /usr/src -r requirements.txt && \
     yes w | pip install -e .
+# Correzioni locali al codice di GeoNode (app/patches/README.md). La build FALLISCE se una patch non si
+# applica più: al prossimo aggiornamento va rivista, non persa.
+COPY patches /usr/src/uni_cagliari/patches
+RUN python3 /usr/src/uni_cagliari/patches/apply_patches.py
+
 # solo informativo: elenca eventuali conflitti senza far fallire la build
 RUN pip check || true

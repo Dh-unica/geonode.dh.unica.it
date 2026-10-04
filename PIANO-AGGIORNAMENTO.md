@@ -324,5 +324,6 @@ In sintesi, da dettagliare con la stessa disciplina di §5:
 - GeoServer 2.27 → 2.28 (la data dir **non torna indietro**: backup completo obbligatorio), regole aggiuntive in `rest.properties`;
 - PostGIS 3.5 (`ALTER EXTENSION postgis UPDATE`), `migrate_file_to_assets`, porting delle personalizzazioni;
 - compose v2 da installare sul server.
+- **Patch locali da rivedere**: [app/patches/README.md](app/patches/README.md). Oggi c'è `set-styles-alt-workspace`. La build fallisce apposta se la patch non si applica più: va verificato se GeoNode 5.x ha corretto il difetto (allora la patch si toglie) o se va riportata sul nuovo codice.
 
 Riferimento: [Upgrade from GeoNode 4 to 5](https://github.com/GeoNode/geonode/wiki/Upgrade-from-GeoNode-4-to-5).

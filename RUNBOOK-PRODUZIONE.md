@@ -37,7 +37,7 @@ Convenzioni:
 
    ```bash
    docker save uni_cagliari/geonode:4.4.5 | gzip -1 | PROD 'gunzip | docker load'
-   PROD "docker image inspect -f '{{.Id}}' uni_cagliari/geonode:4.4.5"   # deve iniziare con sha256:056b9ed65f29
+   PROD "docker image inspect -f '{{.Id}}' uni_cagliari/geonode:4.4.5"   # deve iniziare con sha256:7edb1d4fbf73
    ```
 
 4. Inventario di riferimento prima del freeze:
@@ -150,7 +150,7 @@ PROD "cd $DIR && CONFIRM=si COMPOSE=docker-compose ENV_FILE=.env DUMPS=/opt/proj
 
 | # | Problema | Già presente in 4.4.1? | Impatto | Gestione |
 |---|---|---|---|---|
-| 1 | Dopo un salvataggio di stile riuscito, GeoNode (`set_styles`) **toglie dall'elenco degli stili alternativi del dataset** quelli nello stesso workspace del default: in `helpers.py` c'è `and` invece di `or`. Lo stile resta in GeoServer e nella tabella degli stili | Sì, il codice è identico (anche nel `master` di GeoNode). In 4.4.1 non si notava perché il salvataggio falliva prima | Basso: si perde solo la voce "stile alternativo" nell'interfaccia di GeoNode | Da decidere (vedi piano) |
+| 1 | Dopo un salvataggio di stile riuscito, GeoNode (`set_styles`) **toglie dall'elenco degli stili alternativi del dataset** quelli nello stesso workspace del default: in `helpers.py` c'è `and` invece di `or` | Sì, il codice è identico (anche nel `master` di GeoNode). In 4.4.1 non si notava perché il salvataggio falliva prima | Basso | **Corretto** con la patch `set-styles-alt-workspace` ([app/patches](app/patches/README.md)), provata in locale: il dataset 570 mantiene i suoi 2 stili |
 | 2 | Al primo salvataggio di stile dopo un riavvio, GeoServer può rispondere "DataSource not available after calling dispose()" a una richiesta concomitante sullo store `geonode_data` | Non verificabile in 4.4.1 (il salvataggio falliva) | Basso: osservato 2 volte, la richiesta successiva riesce | Lo smoke test riprova una volta e lo segnala |
 | 3 | L'harvester di `ide.cime.es` (tipo GeoNode) fallisce il controllo di disponibilità ogni 10 minuti | Sì: 1.184 errori nelle 24 ore precedenti | Solo rumore nei log | Fuori perimetro |
 | 4 | 5 thumbnail con URL malformati nel DB danno 404 | Sì, identiche | Estetico | Elenco di riferimento per lo smoke test |
