@@ -178,7 +178,7 @@ Downtime stimato: 45–90 min (verrà misurato in A6).
 
 ### 5.4 La copia locale è fedele e isolata
 
-- **Fedeltà**: stesso hostname (`geonode.dh.unica.it` → `127.0.0.1` via `/etc/hosts`), stesse immagini, stessi volumi ripristinati. Prova: il bug del 502 sugli stili CSS si riproduce. Se non si riproduce, la copia non è fedele e ci si ferma.
+- **Fedeltà**: stesso hostname, stesse immagini, stessi volumi ripristinati. `/etc/hosts` dell'host **non si tocca**: i test manuali si fanno da una finestra Chrome dedicata (`scripts/local-browser.sh`: profilo temporaneo e `--host-resolver-rules` solo per quella istanza), i test automatici con `curl --resolve` / Playwright con la stessa regola. Il resto del sistema continua a vedere la produzione. Prova: il bug del 502 sugli stili CSS si riproduce. Se non si riproduce, la copia non è fedele e ci si ferma.
 - **Isolamento dalla produzione** (critico: con lo stesso hostname i container locali potrebbero risolvere `geonode.dh.unica.it` verso il **server vero** e scriverci sopra):
   - `extra_hosts: geonode.dh.unica.it:host-gateway` su django, celery e geoserver nel `docker-compose.local.yml`;
   - controllo prima di ogni avvio: `getent hosts geonode.dh.unica.it` dentro ogni container deve dare un IP **locale**;
